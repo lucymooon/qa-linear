@@ -248,6 +248,23 @@
     border: none; background: transparent;
   }
   .rp-icon:hover { background: var(--surface-3); color: var(--ink); }
+  .rp-icon.active { opacity: 1 !important; cursor: pointer !important; }
+  .rp-icon.active:hover { color: var(--primary); }
+  /* reset btn tooltip */
+  .rp-icon[data-tip] { position: relative; }
+  .rp-icon[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute; top: calc(100% + 7px); right: 0;
+    white-space: nowrap; font-size: 11px; font-weight: 400;
+    color: var(--ink-muted); background: var(--surface-3);
+    border: 1px solid var(--hairline-str);
+    padding: 5px 9px; border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    opacity: 0; pointer-events: none;
+    transform: translateY(-4px);
+    transition: opacity .14s, transform .14s;
+  }
+  .rp-icon[data-tip]:hover::after { opacity: 1; transform: translateY(0); }
   .rp-section { border-bottom: 1px solid var(--hairline); }
   .rp-section-head {
     display: flex; align-items: center;
@@ -377,10 +394,7 @@
   <div class="nav-sep"></div>
   <span class="nav-title">채팅 출력을 화면 위 마커로</span>
   <div class="nav-sp"></div>
-  <div class="nav-actions">
-    <span class="badge">데스크탑</span>
-    <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px">공유</button>
-  </div>
+
 </nav>
 
 <div class="app">
@@ -416,7 +430,7 @@
   <aside class="rpanel">
     <!-- icon bar -->
     <div class="rp-iconbar">
-      <button class="rp-icon" title="레이아웃">&#9638;</button>
+      <button class="rp-icon" id="resetBtn" data-tip="수정을 적용하면 되돌릴 수 있어요" style="opacity:.35;cursor:not-allowed">↺</button>
     </div>
 
 
@@ -893,13 +907,35 @@ function applyFix(id) {
   if (hl) hl.remove();
   renderCards();
   showToast('수정이 개발 화면에 반영됐어요');
+  updateResetBtn();
 }
+
+function updateResetBtn() {
+  const btn = document.getElementById('resetBtn');
+  if (!btn) return;
+  const hasFixed = Object.values(resolved).some(v => v === true);
+  btn.classList.toggle('active', hasFixed);
+  btn.style.opacity = hasFixed ? '1' : '.35';
+  btn.style.cursor  = hasFixed ? 'pointer' : 'not-allowed';
+  btn.dataset.tip = hasFixed ? '모든 수정을 되돌려요' : '수정을 적용하면 되돌릴 수 있어요';
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  const btn = document.getElementById('resetBtn');
+  if (!btn.classList.contains('active')) return;
+  resolved = {};
+  liveFrame.srcdoc = page === 'p1' ? buildP1Live(resolved) : buildP2Live(resolved);
+  if (analyzed) { renderHighlights(); renderCards(); }
+  updateResetBtn();
+  showToast('모든 수정이 되돌려졌어요');
+});
 
 function deleteIssue(id) {
   resolved[id] = true;
   const hl = hlLayer.querySelector(`[data-id="${id}"]`);
   if (hl) hl.remove();
   renderCards();
+  updateResetBtn();
   showToast('이슈를 삭제했어요');
 }
 
