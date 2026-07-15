@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design QA · Linear</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ── Design tokens (Linear) */
+  :root {
+    --canvas:       #010102;
+    --surface-1:    #0f1011;
+    --surface-2:    #141516;
+    --surface-3:    #18191a;
+    --hairline:     #23252a;
+    --hairline-str: #34343a;
+    --ink:          #f7f8f8;
+    --ink-muted:    #d0d6e0;
+    --ink-subtle:   #8a8f98;
+    --ink-tertiary: #62666d;
+    --primary:      #5e6ad2;
+    --primary-hover:#828fff;
+    --primary-focus:#5e69d1;
+    --success:      #27a644;
+    --sans: 'Inter', -apple-system, system-ui, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--sans);
+    background: var(--canvas);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Top nav */
+  .nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    height: 48px;
+    background: var(--canvas);
+    border-bottom: 1px solid var(--hairline);
+    display: flex; align-items: center;
+    padding: 0 20px; gap: 16px;
+  }
+  .nav-brand {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 600; letter-spacing: -0.3px; color: var(--ink);
+  }
+  .nav-brand svg { width: 18px; height: 18px; }
+  .nav-sep { width: 1px; height: 16px; background: var(--hairline-str); }
+  .nav-title { font-size: 13px; color: var(--ink-subtle); letter-spacing: 0; font-weight: 400; }
+  .nav-sp { flex: 1; }
+  .nav-actions { display: flex; align-items: center; gap: 8px; }
+
+  /* ── Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    padding: 6px 12px; border-radius: 8px; border: none; cursor: pointer;
+    transition: background .12s, color .12s; line-height: 1.2; white-space: nowrap;
+  }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-secondary {
+    background: var(--surface-1); color: var(--ink);
+    border: 1px solid var(--hairline);
+  }
+  .btn-secondary:hover { background: var(--surface-2); }
+  .btn-ghost { background: transparent; color: var(--ink-subtle); border: none; }
+  .btn-ghost:hover { color: var(--ink); background: var(--surface-1); }
+  .btn.loading { opacity: .6; pointer-events: none; }
+  .spin {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,.3); border-top-color: #fff;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Layout */
+  .app {
+    display: flex; height: 100vh; padding-top: 48px;
+  }
+
+  /* ── Left sidebar — page list */
+  .sidebar {
+    flex: 0 0 176px;
+    background: var(--surface-1);
+    border-right: 1px solid var(--hairline);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-head {
+    padding: 14px 14px 8px;
+    font-size: 11px; font-weight: 500;
+    color: var(--ink-tertiary); letter-spacing: .5px; text-transform: uppercase;
+  }
+  .pg-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    font-size: 13px; color: var(--ink-subtle);
+    cursor: pointer; transition: background .1s, color .1s;
+  }
+  .pg-item:hover { background: var(--surface-2); color: var(--ink-muted); }
+  .pg-item.active { color: var(--ink); background: var(--surface-2); }
+  .pg-item.active .pg-dot { background: var(--primary); }
+  .pg-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--hairline-str); flex: 0 0 auto; transition: background .1s;
+  }
+
+  /* ── Center — dual pane */
+  .center { flex: 1; display: flex; overflow: hidden; }
+  .pane {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    position: relative;
+  }
+  .pane + .pane { border-left: 1px solid var(--hairline); }
+  .pane-bar {
+    flex: 0 0 36px; display: flex; align-items: center; gap: 8px;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--hairline);
+    background: var(--surface-1);
+  }
+  .pane-label {
+    font-size: 11px; font-weight: 500; letter-spacing: .4px;
+    text-transform: uppercase; color: var(--ink-subtle);
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--success); flex: 0 0 auto;
+  }
+  .pane-frame { flex: 1; position: relative; overflow: hidden; }
+  .pane-frame iframe { width: 100%; height: 100%; border: none; display: block; }
+
+
+  /* ── Issue popover */
+  .hl-pop {
+    position: fixed; z-index: 200;
+    width: 260px;
+    background: var(--surface-2);
+    border: 1px solid var(--hairline-str);
+    border-radius: 10px;
+    box-shadow: 0 16px 48px rgba(0,0,0,.7);
+    opacity: 0; transform: translateY(6px) scale(.98);
+    pointer-events: none;
+    transition: opacity .15s, transform .15s;
+    overflow: hidden;
+  }
+  .hl-pop.show { opacity: 1; transform: none; pointer-events: auto; }
+  .hl-pop-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 11px 13px; border-bottom: 1px solid var(--hairline);
+  }
+  .hl-pop-num {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    flex: 0 0 auto;
+  }
+  .hl-pop-title { font-size: 12.5px; font-weight: 600; color: var(--ink); flex: 1; line-height: 1.35; }
+  .hl-pop-close {
+    width: 20px; height: 20px; border-radius: 5px;
+    display: grid; place-items: center; border: none;
+    background: transparent; color: var(--ink-tertiary); cursor: pointer; font-size: 14px;
+  }
+  .hl-pop-close:hover { background: var(--surface-3); color: var(--ink); }
+  .hl-pop-body { padding: 11px 13px; display: flex; flex-direction: column; gap: 8px; }
+  .hl-pop-desc { font-size: 12px; color: var(--ink-subtle); line-height: 1.6; }
+  .hl-pop-fix {
+    font-size: 11.5px; color: var(--ink-subtle);
+    background: var(--surface-3); border: 1px solid var(--hairline);
+    border-left: 2px solid var(--primary);
+    border-radius: 0 6px 6px 0; padding: 8px 10px; line-height: 1.55;
+  }
+  .hl-pop-fix-label {
+    font-family: var(--mono); font-size: 10px; color: var(--primary);
+    display: block; margin-bottom: 3px; font-weight: 500;
+  }
+  .hl-pop-actions {
+    display: flex; gap: 6px; padding: 10px 13px;
+    border-top: 1px solid var(--hairline);
+  }
+  .hl-pop-btn {
+    flex: 1; font-size: 12px; font-weight: 500; padding: 6px 10px;
+    border-radius: 7px; border: 1px solid var(--hairline);
+    background: var(--surface-3); color: var(--ink-muted);
+    cursor: pointer; font-family: var(--sans); transition: .12s;
+  }
+  .hl-pop-btn:hover { border-color: var(--hairline-str); color: var(--ink); }
+  .hl-pop-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .hl-pop-btn.primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+
+  /* ── Issue overlay */
+  .hl-layer {
+    position: absolute; inset: 0; pointer-events: none; z-index: 10;
+  }
+  .hl {
+    position: absolute;
+    border: 1.5px solid var(--primary);
+    background: rgba(94,106,210,.08);
+    border-radius: 6px;
+    pointer-events: auto; cursor: pointer;
+    opacity: 0;
+    animation: hlpop .3s cubic-bezier(.18,.9,.3,1.4) forwards;
+    transition: border-color .15s, background .15s;
+  }
+  .hl:hover, .hl.focused {
+    border-color: var(--primary-hover);
+    background: rgba(94,106,210,.14);
+  }
+  .hl.focused { border-width: 2px; }
+  .hl .hl-badge {
+    position: absolute; top: -9px; left: -9px;
+    width: 18px; height: 18px; border-radius: 9999px;
+    background: var(--primary); color: #fff;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    border: 1.5px solid var(--canvas);
+    box-shadow: 0 2px 8px rgba(0,0,0,.5);
+  }
+  .hl.resolved { border-color: var(--success); background: rgba(39,166,68,.07); }
+  .hl.resolved .hl-badge { background: var(--success); }
+  @keyframes hlpop { to { opacity: 1; } }
+
+  /* ── Right panel — Linear dark */
+  .rpanel {
+    flex: 0 0 300px;
+    background: var(--surface-1);
+    border-left: 1px solid var(--hairline);
+    display: flex; flex-direction: column; overflow: hidden;
+    color: var(--ink);
+    font-family: var(--sans);
+  }
+  .rp-iconbar {
+    flex: 0 0 40px; display: flex; align-items: center; justify-content: flex-end;
+    padding: 0 12px; border-bottom: 1px solid var(--hairline); gap: 6px;
+  }
+  .rp-icon {
+    width: 28px; height: 28px; border-radius: 6px;
+    display: grid; place-items: center;
+    color: var(--ink-subtle); cursor: pointer; font-size: 14px;
+    border: none; background: transparent;
+  }
+  .rp-icon:hover { background: var(--surface-3); color: var(--ink); }
+  .rp-section { border-bottom: 1px solid var(--hairline); }
+  .rp-section-head {
+    display: flex; align-items: center;
+    padding: 10px 14px; cursor: pointer; user-select: none; gap: 6px;
+  }
+  .rp-section-title { font-size: 13px; font-weight: 600; color: var(--ink-muted); flex: 1; }
+  .rp-section-icon {
+    font-size: 11px; color: var(--ink-tertiary); transition: transform .18s;
+    border: none; background: none; cursor: pointer; padding: 0;
+    display: grid; place-items: center;
+  }
+  .rp-section.collapsed .rp-section-icon { transform: rotate(-90deg); }
+  .rp-section-add {
+    width: 22px; height: 22px; border-radius: 5px;
+    display: grid; place-items: center; border: none;
+    background: transparent; color: var(--ink-subtle); font-size: 15px; cursor: pointer;
+  }
+  .rp-section-add:hover { background: var(--surface-3); color: var(--ink); }
+  .rp-section-body { overflow: hidden; }
+  .rp-section.collapsed .rp-section-body { display: none; }
+  .page-list { padding: 2px 0 8px; }
+  .page-row {
+    display: flex; align-items: center; padding: 7px 14px;
+    font-size: 13px; color: var(--ink-subtle); cursor: pointer; transition: background .1s;
+  }
+  .page-row:hover { background: var(--surface-2); color: var(--ink-muted); }
+  .page-row.active { color: var(--ink); font-weight: 500; background: var(--surface-2); }
+  .qa-list { padding: 2px 0 8px; }
+  .qa-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 14px; cursor: pointer;
+    font-size: 13px; color: var(--ink-subtle); transition: background .1s;
+  }
+  .qa-row:hover { background: var(--surface-2); }
+  .qa-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 600;
+    background: var(--surface-3); color: var(--ink-subtle); flex: 0 0 auto;
+  }
+  .qa-row.done .qa-num { background: var(--success); color: #fff; font-size: 0; }
+  .qa-row.done .qa-num::after { content: '✓'; font-size: 10px; }
+  .qa-row.done > span:last-child { text-decoration: line-through; color: var(--ink-tertiary); }
+  .qa-row.active-issue { background: rgba(94,106,210,.12); }
+  .qa-row.active-issue .qa-num { background: var(--primary); color: #fff; }
+  .rp-chat { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .chat-msgs {
+    flex: 1; overflow-y: auto; padding: 10px 14px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .chat-msgs::-webkit-scrollbar { width: 3px; }
+  .chat-msgs::-webkit-scrollbar-thumb { background: var(--hairline-str); border-radius: 2px; }
+  .cbub {
+    font-size: 12.5px; line-height: 1.55; padding: 8px 12px;
+    border-radius: 10px; max-width: 88%;
+  }
+  .cbub.ai {
+    align-self: flex-start;
+    background: var(--surface-2); color: var(--ink-muted);
+    border: 1px solid var(--hairline);
+  }
+  .cbub.me {
+    align-self: flex-end;
+    background: var(--primary); color: #fff;
+    border-radius: 10px 10px 2px 10px;
+  }
+  .chat-input-area {
+    border: 1px solid var(--hairline); border-radius: 10px;
+    margin: 10px 12px; overflow: hidden;
+    background: var(--surface-2);
+  }
+  .chat-textarea {
+    width: 100%; padding: 10px 12px;
+    border: none; outline: none; resize: none;
+    font-family: var(--sans); font-size: 13px; color: var(--ink-muted);
+    background: transparent; min-height: 44px; max-height: 100px; line-height: 1.5;
+  }
+  .chat-textarea::placeholder { color: var(--ink-tertiary); }
+  .chat-bottom-bar {
+    display: flex; align-items: center; padding: 6px 10px;
+    border-top: 1px solid var(--hairline);
+  }
+  .chat-add {
+    width: 26px; height: 26px; border-radius: 6px;
+    display: grid; place-items: center; border: 1px solid var(--hairline);
+    background: var(--surface-3); color: var(--ink-subtle); font-size: 16px; cursor: pointer;
+  }
+  .chat-add:hover { background: var(--surface-4); color: var(--ink); }
+  .run-area { padding: 10px 12px; border-bottom: 1px solid var(--hairline); }
+  .run-btn {
+    width: 100%; justify-content: center;
+    font-size: 13px; font-weight: 500; padding: 8px 14px;
+    background: var(--primary); color: #fff; border: none;
+    border-radius: 8px; cursor: pointer;
+  }
+  .run-btn:hover { background: var(--primary-hover); }
+  .badge {
+    font-size: 10px; font-weight: 500; padding: 2px 7px;
+    border-radius: 9999px; background: var(--surface-2);
+    color: var(--ink-muted); border: 1px solid var(--hairline); letter-spacing: .3px;
+  }
+
+  /* toast */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(12px);
+    background: var(--surface-2); color: var(--ink-muted);
+    border: 1px solid var(--hairline-str);
+    font-size: 12px; padding: 8px 16px; border-radius: 8px;
+    opacity: 0; transition: .2s; z-index: 200; white-space: nowrap;
+    box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- nav -->
+<nav class="nav">
+  <div class="nav-brand">
+    <svg viewBox="0 0 100 100" fill="none">
+      <circle cx="50" cy="50" r="46" fill="#5e6ad2"/>
+      <path d="M22 72L56 22l22 28-16 4 16 18H22z" fill="#fff" opacity=".9"/>
+    </svg>
+    Design QA
+  </div>
+  <div class="nav-sep"></div>
+  <span class="nav-title">채팅 출력을 화면 위 마커로</span>
+  <div class="nav-sp"></div>
+  <div class="nav-actions">
+    <span class="badge">데스크탑</span>
+    <button class="btn btn-secondary" style="font-size:12px;padding:5px 10px">공유</button>
+  </div>
+</nav>
+
+<div class="app">
+  <!-- sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-head">Pages</div>
+    <div id="pageList"></div>
+  </aside>
+
+  <!-- center -->
+  <div class="center">
+    <div class="pane">
+      <div class="pane-bar">
+        <span class="pane-label">Design</span>
+      </div>
+      <div class="pane-frame">
+        <iframe id="designFrame" title="디자인 시안"></iframe>
+      </div>
+    </div>
+    <div class="pane">
+      <div class="pane-bar">
+        <span class="live-dot"></span>
+        <span class="pane-label">Live</span>
+      </div>
+      <div class="pane-frame">
+        <iframe id="liveFrame" title="개발 화면"></iframe>
+        <div class="hl-layer" id="hlLayer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- right panel — wireframe -->
+  <aside class="rpanel">
+    <!-- icon bar -->
+    <div class="rp-iconbar">
+      <button class="rp-icon" title="레이아웃">&#9638;</button>
+    </div>
+
+
+    <!-- Section 2: 진행 상황 -->
+    <div class="rp-section" id="secProgress">
+      <div class="rp-section-head" onclick="toggleSection('secProgress')">
+        <span class="rp-section-title">진행 상황</span>
+        <button class="rp-section-icon">&#8964;</button>
+      </div>
+      <div class="rp-section-body">
+        <div class="run-area">
+          <button class="run-btn" id="runBtn">QA 검수 실행</button>
+        </div>
+        <div class="qa-list" id="qaList">
+          <div style="padding:10px 14px;font-size:12px;color:#9ca3af">페이지를 선택하고 검수를 실행하세요.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: 대화 -->
+    <div class="rp-section" id="secChat" style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden">
+      <div class="rp-section-head" onclick="toggleSection('secChat')">
+        <span class="rp-section-title">대화</span>
+        <button class="rp-section-icon">&#8964;</button>
+      </div>
+      <div class="rp-section-body rp-chat" style="flex:1;display:flex;flex-direction:column;min-height:0">
+        <div class="chat-msgs" id="chatLog">
+          <div class="cbub ai">디자인 시안과 개발 화면을 비교해 이슈를 해당 위치에 바로 표시해요.</div>
+        </div>
+        <div class="chat-input-area">
+          <textarea class="chat-textarea" id="chatIn" placeholder="메시지를 입력하세요..." rows="2"></textarea>
+          <div class="chat-bottom-bar">
+            <button class="chat-add">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="hl-pop" id="hlPop">
+  <div class="hl-pop-head">
+    <span class="hl-pop-num" id="popNum"></span>
+    <span class="hl-pop-title" id="popTitle"></span>
+    <button class="hl-pop-close" id="popClose">✕</button>
+  </div>
+  <div class="hl-pop-body">
+    <div class="hl-pop-desc" id="popDesc"></div>
+    <div class="hl-pop-fix"><span class="hl-pop-fix-label">수정 제안</span><span id="popFix"></span></div>
+  </div>
+  <div class="hl-pop-actions">
+    <button class="hl-pop-btn" id="popDel">삭제</button>
+    <button class="hl-pop-btn primary" id="popFix2">수정 적용</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── Design tokens in JS */
+const C = {
+  canvas:'#010102', s1:'#0f1011', s2:'#141516', s3:'#18191a',
+  hair:'#23252a', hairStr:'#34343a',
+  ink:'#f7f8f8', inkM:'#d0d6e0', inkS:'#8a8f98', inkT:'#62666d',
+  primary:'#5e6ad2', success:'#27a644'
+};
+
+const PAGES = { p1:'페이지 1', p2:'페이지 2' };
+
+/* ── Shared HTML structure */
+const NAV = (active='홈') => `
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Inter',-apple-system,system-ui,sans-serif}
+body{background:${C.canvas};color:${C.ink};font-size:14px;line-height:1.5}
+.gnb{display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:56px;border-bottom:1px solid ${C.hair};position:sticky;top:0;background:${C.canvas};z-index:10}
+.logo{font-size:15px;font-weight:600;letter-spacing:-0.4px;color:${C.ink}}
+.nav{display:flex;gap:24px;font-size:13px;color:${C.inkS}}
+.nav a{color:${C.inkS};text-decoration:none;transition:.1s}
+.nav a:hover{color:${C.ink}}
+.nav a.on{color:${C.ink}}
+.gnb-cta{display:flex;gap:8px}
+.gbtn{font-size:13px;font-weight:500;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;line-height:1.2}
+.gbtn-p{background:${C.primary};color:#fff}
+.gbtn-s{background:${C.s1};color:${C.ink};border:1px solid ${C.hair}}
+</style>
+<div class="gnb">
+  <div class="logo">Brand</div>
+  <div class="nav">
+    <a href="#" class="${active==='홈'?'on':''}">홈</a>
+    <a href="#" class="${active==='소개'?'on':''}">소개</a>
+    <a href="#" class="${active==='서비스'?'on':''}">서비스</a>
+    <a href="#" class="${active==='팀'?'on':''}">팀</a>
+  </div>
+  <div class="gnb-cta">
+    <button class="gbtn gbtn-s">로그인</button>
+    <button class="gbtn gbtn-p">시작하기</button>
+  </div>
+</div>`;
+
+const FOOTER = `
+<div style="background:${C.s1};border-top:1px solid ${C.hair};padding:40px 32px;margin-top:64px;display:flex;justify-content:space-between;font-size:12px;color:${C.inkT}">
+  <span>© 2025 Brand</span>
+  <div style="display:flex;gap:20px"><span>개인정보처리방침</span><span>이용약관</span><span>Contact</span></div>
+</div>`;
+
+/* ── Page 1: Design (correct) */
+const P1_DESIGN = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+.hero{text-align:center;padding:80px 32px 64px;background:${C.s1};border-bottom:1px solid ${C.hair}}
+.hero h1{font-size:40px;font-weight:600;letter-spacing:-1.2px;line-height:1.15;margin-bottom:14px;color:${C.ink}}
+.hero p{font-size:16px;color:${C.inkS};max-width:360px;margin:0 auto 28px;line-height:1.6}
+.hero-cta{display:inline-block;padding:10px 22px;background:${C.primary};color:#fff;border-radius:8px;font-size:14px;font-weight:500}
+.cards{display:flex;gap:16px;padding:48px 32px;max-width:960px;margin:0 auto}
+.card{flex:1;background:${C.s1};border:1px solid ${C.hair};border-radius:12px;overflow:hidden}
+.card-img{height:140px;overflow:hidden;border-bottom:1px solid ${C.hair}}.card-img img{width:100%;height:100%;object-fit:cover;display:block}
+.card-body{padding:20px}
+.card-body h3{font-size:15px;font-weight:600;letter-spacing:-0.3px;margin-bottom:6px;color:${C.ink}}
+.card-body p{font-size:13px;color:${C.inkS};line-height:1.6}
+</style>
+</head><body>
+${NAV('홈')}
+<div class="hero">
+  <h1>더 나은 경험을<br>디자인합니다</h1>
+  <p>사용자가 원하는 것을 정확히 파악하고, 가치 있는 인터페이스를 만들어 냅니다.</p>
+  <span class="hero-cta">시작하기</span>
+</div>
+<div class="cards">
+  <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1553877522-43269d4ea984?w=600&q=80" alt="UX 리서치"></div><div class="card-body"><h3>UX 리서치</h3><p>사용자 인터뷰와 데이터를 바탕으로 진짜 문제를 찾습니다.</p></div></div>
+  <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&q=80" alt="UI 디자인"></div><div class="card-body"><h3>UI 디자인</h3><p>명확한 시각 언어로 일관된 인터페이스를 설계합니다.</p></div></div>
+  <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1586717799252-bd134ad00e26?w=600&q=80" alt="프로토타이핑"></div><div class="card-body"><h3>프로토타이핑</h3><p>빠른 검증으로 개발 전 리스크를 줄입니다.</p></div></div>
+</div>
+${FOOTER}
+</body></html>`;
+
+/* ── Page 1: Live (3 bugs) */
+// [1] h1 color: #f7f8f8 → #62666d  (대비 부족)
+// [2] card gap: 16px → 4px          (간격 좁음)
+// [3] card h3 font-size: 15px → 11px (크기 불일치)
+function buildP1Live(resolved) {
+  let h1color  = resolved.r1 ? C.ink    : C.inkT;
+  let gap      = resolved.r2 ? '16px'  : '4px';
+  let h3size   = resolved.r3 ? '15px'  : '11px';
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+.hero{text-align:center;padding:80px 32px 64px;background:${C.s1};border-bottom:1px solid ${C.hair}}
+.hero h1{font-size:40px;font-weight:600;letter-spacing:-1.2px;line-height:1.15;margin-bottom:14px;color:${h1color}}
+.hero p{font-size:16px;color:${C.inkS};max-width:360px;margin:0 auto 28px;line-height:1.6}
+.hero-cta{display:inline-block;padding:10px 22px;background:${C.primary};color:#fff;border-radius:8px;font-size:14px;font-weight:500}
+.cards{display:flex;gap:${gap};padding:48px 32px;max-width:960px;margin:0 auto}
+.card{flex:1;background:${C.s1};border:1px solid ${C.hair};border-radius:12px;overflow:hidden}
+.card-img{height:140px;overflow:hidden;border-bottom:1px solid ${C.hair}}.card-img img{width:100%;height:100%;object-fit:cover;display:block}
+.card-body{padding:20px}
+.card-body h3{font-size:${h3size};font-weight:600;letter-spacing:-0.3px;margin-bottom:6px;color:${C.ink}}
+.card-body p{font-size:13px;color:${C.inkS};line-height:1.6}
+</style>
+</head><body>
+${NAV('홈')}
+<div class="hero">
+  <h1>더 나은 경험을<br>디자인합니다</h1>
+  <p>사용자가 원하는 것을 정확히 파악하고, 가치 있는 인터페이스를 만들어 냅니다.</p>
+  <span class="hero-cta">시작하기</span>
+</div>
+<div class="cards">
+  <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1553877522-43269d4ea984?w=600&q=80" alt="UX 리서치"></div><div class="card-body"><h3>UX 리서치</h3><p>사용자 인터뷰와 데이터를 바탕으로 진짜 문제를 찾습니다.</p></div></div>
+  <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600&q=80" alt="UI 디자인"></div><div class="card-body"><h3>UI 디자인</h3><p>명확한 시각 언어로 일관된 인터페이스를 설계합니다.</p></div></div>
+  <div class="card"><div class="card-img"><img src="https://images.unsplash.com/photo-1586717799252-bd134ad00e26?w=600&q=80" alt="프로토타이핑"></div><div class="card-body"><h3>프로토타이핑</h3><p>빠른 검증으로 개발 전 리스크를 줄입니다.</p></div></div>
+</div>
+${FOOTER}
+</body></html>`;
+}
+
+/* ── Page 2: Design */
+const P2_DESIGN = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+.hero{text-align:center;padding:72px 32px 56px;background:${C.s1};border-bottom:1px solid ${C.hair}}
+.hero h1{font-size:36px;font-weight:600;letter-spacing:-1px;line-height:1.2;margin-bottom:12px;color:${C.ink}}
+.hero p{font-size:15px;color:${C.inkS};max-width:320px;margin:0 auto;line-height:1.65}
+.team{padding:48px 32px;max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.member{display:flex;align-items:center;gap:20px;padding:20px;background:${C.s1};border:1px solid ${C.hair};border-radius:12px}
+.avatar{width:56px;height:56px;border-radius:9999px;overflow:hidden;flex:0 0 auto;object-fit:cover}
+.member h3{font-size:14px;font-weight:600;margin-bottom:3px;color:${C.ink}}
+.member p{font-size:12px;color:${C.inkS};line-height:1.55}
+.cta-area{text-align:center;padding:48px 32px}
+.cta-btn{display:inline-block;padding:10px 24px;background:${C.primary};color:#fff;border-radius:8px;font-size:14px;font-weight:500}
+</style>
+</head><body>
+${NAV('팀')}
+<div class="hero">
+  <h1>우리 팀을 소개합니다</h1>
+  <p>다양한 배경을 가진 전문가들이 함께 더 나은 제품을 만들어 갑니다.</p>
+</div>
+<div class="team">
+  <div class="member"><img class="avatar" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&q=80" alt="김디자인"><div><h3>김디자인</h3><p>UX 리서치와 인터랙션 설계를 담당합니다.</p></div></div>
+  <div class="member"><img class="avatar" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&q=80" alt="이개발"><div><h3>이개발</h3><p>프론트엔드 개발을 담당합니다. 성능과 접근성에 관심이 많습니다.</p></div></div>
+  <div class="member"><img class="avatar" src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=80&q=80" alt="박기획"><div><h3>박기획</h3><p>제품 전략과 로드맵을 책임집니다.</p></div></div>
+</div>
+<div class="cta-area"><span class="cta-btn">함께 일하기</span></div>
+${FOOTER}
+</body></html>`;
+
+/* ── Page 2: Live (3 bugs) */
+// [4] avatar border-radius: 9999px → 4px
+// [5] hero bg: s1 → s2 (밝음)
+// [6] cta-btn bg: primary → #3e3e44
+function buildP2Live(resolved) {
+  let avrad  = resolved.r4 ? '9999px' : '4px';
+  let herobg = resolved.r5 ? C.s1     : C.s2;
+  let ctabg  = resolved.r6 ? C.primary: '#3e3e44';
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+.hero{text-align:center;padding:72px 32px 56px;background:${herobg};border-bottom:1px solid ${C.hair}}
+.hero h1{font-size:36px;font-weight:600;letter-spacing:-1px;line-height:1.2;margin-bottom:12px;color:${C.ink}}
+.hero p{font-size:15px;color:${C.inkS};max-width:320px;margin:0 auto;line-height:1.65}
+.team{padding:48px 32px;max-width:800px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.member{display:flex;align-items:center;gap:20px;padding:20px;background:${C.s1};border:1px solid ${C.hair};border-radius:12px}
+.avatar{width:56px;height:56px;border-radius:${avrad};background:${C.s2};border:1px solid ${C.hair};flex:0 0 auto}
+.member h3{font-size:14px;font-weight:600;margin-bottom:3px;color:${C.ink}}
+.member p{font-size:12px;color:${C.inkS};line-height:1.55}
+.cta-area{text-align:center;padding:48px 32px}
+.cta-btn{display:inline-block;padding:10px 24px;background:${ctabg};color:#fff;border-radius:8px;font-size:14px;font-weight:500}
+</style>
+</head><body>
+${NAV('팀')}
+<div class="hero">
+  <h1>우리 팀을 소개합니다</h1>
+  <p>다양한 배경을 가진 전문가들이 함께 더 나은 제품을 만들어 갑니다.</p>
+</div>
+<div class="team">
+  <div class="member"><img class="avatar" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&q=80" alt="김디자인"><div><h3>김디자인</h3><p>UX 리서치와 인터랙션 설계를 담당합니다.</p></div></div>
+  <div class="member"><img class="avatar" src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&q=80" alt="이개발"><div><h3>이개발</h3><p>프론트엔드 개발을 담당합니다. 성능과 접근성에 관심이 많습니다.</p></div></div>
+  <div class="member"><img class="avatar" src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=80&q=80" alt="박기획"><div><h3>박기획</h3><p>제품 전략과 로드맵을 책임집니다.</p></div></div>
+</div>
+<div class="cta-area"><span class="cta-btn">함께 일하기</span></div>
+${FOOTER}
+</body></html>`;
+}
+
+/* ── Issues */
+const ALL_ISSUES = [
+  { id:'r1', page:'p1', top:'18%', left:'10%', w:'80%', h:'15%',
+    title:'히어로 타이틀 색상 대비 부족',
+    desc:'h1 color가 #62666d으로 적용되어 어두운 배경(#0f1011) 대비 약 2.3:1입니다. 디자인 기준(#f7f8f8) 대비 12:1 이상과 크게 다릅니다.',
+    fix:'h1의 color를 #f7f8f8로 수정합니다.' },
+  { id:'r2', page:'p1', top:'55%', left:'4%', w:'92%', h:'35%',
+    title:'카드 간격 축소 (16px → 4px)',
+    desc:'.cards gap이 4px으로 적용되어 카드들이 붙어 보입니다. 디자인 기준은 16px입니다.',
+    fix:'.cards의 gap을 16px로 수정합니다.' },
+  { id:'r3', page:'p1', top:'68%', left:'5%', w:'28%', h:'8%',
+    title:'카드 제목 크기 불일치 (15px → 11px)',
+    desc:'.card-body h3 font-size가 11px으로 적용되어 디자인 기준(15px)보다 작습니다.',
+    fix:'.card-body h3의 font-size를 15px로 수정합니다.' },
+  { id:'r4', page:'p2', top:'50%', left:'4%', w:'92%', h:'40%',
+    title:'아바타 모양 불일치 (원형 → 사각)',
+    desc:'.avatar border-radius가 4px(사각)으로 적용되었습니다. 디자인 기준은 9999px(원형)입니다.',
+    fix:'.avatar border-radius를 9999px으로 수정합니다.' },
+  { id:'r5', page:'p2', top:'18%', left:'8%', w:'84%', h:'22%',
+    title:'히어로 배경 surface-2 → surface-1',
+    desc:'히어로 background가 #141516(surface-2)으로 적용되어 설계 기준(#0f1011, surface-1)보다 밝습니다.',
+    fix:'.hero background를 #0f1011로 수정합니다.' },
+  { id:'r6', page:'p2', top:'84%', left:'30%', w:'40%', h:'8%',
+    title:'CTA 버튼 색상 불일치',
+    desc:'CTA 버튼 background가 #3e3e44(hairline-tertiary)으로 적용되어 브랜드 컬러(#5e6ad2)와 다릅니다.',
+    fix:'.cta-btn background를 #5e6ad2로 수정합니다.' },
+];
+
+/* ── Accordion toggle */
+function toggleSection(id) {
+  const sec = document.getElementById(id);
+  if (sec) sec.classList.toggle('collapsed');
+}
+
+/* ── State */
+let page = 'p1';
+let analyzed = false;
+let resolved = {};
+let openCard = null;
+
+const $ = s => document.querySelector(s);
+const designFrame = $('#designFrame');
+const liveFrame   = $('#liveFrame');
+const hlLayer     = $('#hlLayer');
+const runBtn      = $('#runBtn');
+const chatLog     = $('#chatLog');
+const toast       = $('#toast');
+
+/* ── Page list */
+Object.entries(PAGES).forEach(([id, name]) => {
+  const el = document.createElement('div');
+  el.className = 'page-row' + (id === page ? ' active' : '');
+  el.dataset.id = id;
+  el.textContent = name;
+  el.addEventListener('click', () => switchPage(id));
+  $('#pageList').appendChild(el);
+});
+
+function switchPage(id) {
+  if (id === page) return;
+  page = id; analyzed = false; resolved = {};
+  document.querySelectorAll('.page-row').forEach(e => e.classList.toggle('active', e.dataset.id === id));
+  hlLayer.innerHTML = '';
+  document.getElementById('qaList').innerHTML = '<div style="padding:10px 14px;font-size:12px;color:#62666d">페이지를 선택하고 검수를 실행하세요.</div>';
+  runBtn.textContent = 'Run QA';
+  runBtn.classList.remove('loading');
+  loadFrames();
+}
+
+/* ── Frame loading */
+function html2srcdoc(html) { return html; }
+function loadFrames() {
+  designFrame.srcdoc = page === 'p1' ? P1_DESIGN : P2_DESIGN;
+  liveFrame.srcdoc   = page === 'p1' ? buildP1Live(resolved) : buildP2Live(resolved);
+}
+loadFrames();
+
+/* ── Run QA */
+runBtn.addEventListener('click', () => {
+  if (!analyzed) {
+    runBtn.innerHTML = '<span class="spin"></span> Analyzing…';
+    runBtn.classList.add('loading');
+    addBub('me', '현재 페이지 QA 실행해줘');
+    setTimeout(() => {
+      analyzed = true;
+      runBtn.classList.remove('loading');
+      runBtn.textContent = 'Re-run QA';
+      renderHighlights();
+      renderCards();
+      const n = activeIssues().length;
+      addBub('ai', `검수 완료. 이슈 ${n}건을 개발 화면 위에 마커로 표시했어요.`);
+      showToast(`${n} issues found`);
+    }, 900);
+  } else {
+    resolved = {};
+    analyzed = false;
+    hlLayer.innerHTML = '';
+    runBtn.textContent = 'Run QA';
+    document.getElementById('qaList').innerHTML = '<div style="padding:10px 14px;font-size:12px;color:#62666d">다시 검수 중…</div>';
+    setTimeout(() => {
+      analyzed = true;
+      runBtn.textContent = 'Re-run QA';
+      loadFrames();
+      renderHighlights();
+      renderCards();
+      showToast('QA refreshed');
+    }, 700);
+  }
+});
+
+function activeIssues() {
+  return ALL_ISSUES.filter(i => i.page === page && !resolved[i.id]);
+}
+
+/* ── Highlights */
+function renderHighlights() {
+  hlLayer.innerHTML = '';
+  activeIssues().forEach((iss, idx) => {
+    const el = document.createElement('div');
+    el.className = 'hl';
+    el.style.cssText = `top:${iss.top};left:${iss.left};width:${iss.w};height:${iss.h};animation-delay:${idx*0.08}s`;
+    el.dataset.id = iss.id;
+    el.innerHTML = `<span class="hl-badge">${ALL_ISSUES.indexOf(iss)+1}</span>`;
+    el.addEventListener('click', () => selectIssue(iss.id));
+    hlLayer.appendChild(el);
+  });
+}
+
+/* ── Issue cards */
+function renderCards() {
+  const qaList = document.getElementById('qaList');
+  // Show ALL issues for this page (done + pending)
+  const allPage = ALL_ISSUES.filter(i => i.page === page);
+  if (!allPage.length) {
+    qaList.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:#62666d">이슈가 없습니다.</div>';
+    return;
+  }
+  qaList.innerHTML = '';
+  allPage.forEach((iss, i) => {
+    const done = !!resolved[iss.id];
+    const row = document.createElement('div');
+    row.className = 'qa-row' + (done ? ' done' : '');
+    row.dataset.id = iss.id;
+    const numEl = document.createElement('span');
+    numEl.className = 'qa-num';
+    if (!done) numEl.textContent = i + 1;
+    const label = document.createElement('span');
+    label.textContent = iss.title;
+    label.style.cssText = 'flex:1;font-size:13px;color:' + (done ? '#62666d' : '#8a8f98');
+    if (done) label.style.textDecoration = 'line-through';
+    // actions
+    const acts = document.createElement('span');
+    acts.style.cssText = 'display:flex;gap:4px;flex-shrink:0';
+    if (!done) {
+      const fixBtn = document.createElement('button');
+      fixBtn.textContent = '수정';
+      fixBtn.style.cssText = 'font-size:11px;padding:2px 7px;border-radius:5px;border:1px solid #23252a;background:#141516;color:#d0d6e0;cursor:pointer;font-family:inherit';
+      fixBtn.addEventListener('click', e => { e.stopPropagation(); applyFix(iss.id); });
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '삭제';
+      delBtn.style.cssText = 'font-size:11px;padding:2px 7px;border-radius:5px;border:1px solid #23252a;background:#141516;color:#d0d6e0;cursor:pointer;font-family:inherit';
+      delBtn.addEventListener('click', e => { e.stopPropagation(); deleteIssue(iss.id); });
+      acts.appendChild(fixBtn);
+      acts.appendChild(delBtn);
+    }
+    row.appendChild(numEl);
+    row.appendChild(label);
+    row.appendChild(acts);
+    row.addEventListener('click', () => { if (!done) selectIssue(iss.id); });
+    qaList.appendChild(row);
+  });
+}
+
+const hlPop = document.getElementById('hlPop');
+let popCurrentId = null;
+
+function openPop(id, hlEl) {
+  const iss = ALL_ISSUES.find(i => i.id === id);
+  if (!iss) return;
+  const idx = ALL_ISSUES.indexOf(iss) + 1;
+  document.getElementById('popNum').textContent = idx;
+  document.getElementById('popTitle').textContent = iss.title;
+  document.getElementById('popDesc').textContent = iss.desc;
+  document.getElementById('popFix').textContent = iss.fix;
+  popCurrentId = id;
+
+  // 팝오버 위치: 마커 기준 왼쪽 우선, 화면 벗어나면 오른쪽
+  const r = hlEl.getBoundingClientRect();
+  const pw = 260, ph = 200;
+  let left = r.left - pw - 10;
+  let top  = r.top + (r.height / 2) - ph / 2;
+  if (left < 8) left = r.right + 10;
+  if (left + pw > innerWidth - 8) left = r.left - pw - 10;
+  if (top < 8) top = 8;
+  if (top + ph > innerHeight - 8) top = innerHeight - ph - 8;
+  hlPop.style.left = left + 'px';
+  hlPop.style.top  = top  + 'px';
+  hlPop.classList.add('show');
+}
+
+function closePop() {
+  hlPop.classList.remove('show');
+  popCurrentId = null;
+  document.querySelectorAll('.hl').forEach(h => h.classList.remove('focused'));
+  document.querySelectorAll('.qa-row').forEach(r => r.classList.remove('active-issue'));
+}
+
+document.getElementById('popClose').addEventListener('click', closePop);
+document.getElementById('popDel').addEventListener('click', () => {
+  if (popCurrentId) { deleteIssue(popCurrentId); closePop(); }
+});
+document.getElementById('popFix2').addEventListener('click', () => {
+  if (popCurrentId) { applyFix(popCurrentId); closePop(); }
+});
+document.addEventListener('click', e => {
+  if (!hlPop.contains(e.target) && !e.target.closest('.hl')) closePop();
+});
+
+function selectIssue(id) {
+  // QA 리스트 하이라이트
+  document.querySelectorAll('.qa-row').forEach(r => r.classList.toggle('active-issue', r.dataset.id === id));
+  // 마커 포커스
+  document.querySelectorAll('.hl').forEach(h => h.classList.remove('focused'));
+  const hl = hlLayer.querySelector(`[data-id="${id}"]`);
+  if (hl) {
+    hl.classList.add('focused');
+    hl.animate([{transform:'scale(1)'},{transform:'scale(1.05)'},{transform:'scale(1)'}],{duration:380});
+    // 팝오버 열기 (이미 열려있으면 닫고 재오픈)
+    if (popCurrentId === id) { closePop(); return; }
+    openPop(id, hl);
+  }
+}
+
+function applyFix(id) {
+  resolved[id] = true;
+  liveFrame.srcdoc = page === 'p1' ? buildP1Live(resolved) : buildP2Live(resolved);
+  const hl = hlLayer.querySelector(`[data-id="${id}"]`);
+  if (hl) hl.remove();
+  renderCards();
+  showToast('수정이 개발 화면에 반영됐어요');
+}
+
+function deleteIssue(id) {
+  resolved[id] = true;
+  const hl = hlLayer.querySelector(`[data-id="${id}"]`);
+  if (hl) hl.remove();
+  renderCards();
+  showToast('이슈를 삭제했어요');
+}
+
+/* ── Chat */
+function addBub(who, text) {
+  const b = document.createElement('div');
+  b.className = `cbub ${who}`;
+  b.textContent = text;
+  chatLog.appendChild(b);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+document.getElementById('chatIn').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+});
+function sendChat() {
+  const el = document.getElementById('chatIn');
+  const v = el.value.trim();
+  if (!v) return;
+  addBub('me', v);
+  el.value = '';
+  setTimeout(() => addBub('ai', '요청을 확인했어요.'), 400);
+}
+
+
+/* ── Toast */
+function showToast(t) {
+  toast.textContent = t;
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toast.classList.remove('show'), 1800);
+}
+</script>
+</body>
+</html>
